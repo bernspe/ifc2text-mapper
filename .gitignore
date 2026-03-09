@@ -1,0 +1,14 @@
+.idea
+copilot.*
+*.xml
+dist
+dump
+node_modules
+public/.htaccess-abandoned
+.env.local
+.env.server
+package-lock.json
+
+# Project exclude paths
+/src/types/icf.d.ts
+/src/types/icf.js

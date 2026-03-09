@@ -1,0 +1,37 @@
+[
+{
+    "sentence": "Der Patient kann nichts hören.",
+    "matches": [
+        {
+            "textstelle": "nichts hören",
+            "code": "b230",
+            "beschreibung": "Die Funktion des Hörens ist eingeschränkt."
+        }
+    ]
+},
+{
+    "sentence": "Ich kann schlecht laufen.",
+    "matches": [
+        {
+            "textstelle": "laufen",
+            "code": "d450",
+            "beschreibung": "Laufen ist eine Form der Fortbewegung, die in der ICF unter d450 klassifiziert ist."
+        }
+    ]
+},
+    {
+        "sentence": "Ich kann nicht hören und sehen.",
+    "matches": [
+        {
+            "textstelle": "hören",
+            "code": "b230",
+            "beschreibung": "Hören ist eine Funktion, die der Wahrnehmung von Tönen oder Geräuschen dient"
+        },
+        {
+            "textstelle": "sehen",
+            "code": "b210",
+            "beschreibung": "Sehen ist eine Funktion, die der Wahrnehmung von Licht sowie von Form, Größe, Gestalt und Farbe des visuellen Reizes dient"
+        }
+    ]
+}
+]
