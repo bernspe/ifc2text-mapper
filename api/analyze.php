@@ -87,10 +87,6 @@ $matches = callLlm(
 
 ob_end_clean();
 
-$stats = incrementCallCounter('call_stats.json');
-// $stats['total'] → Gesamtaufrufe
-// $stats['today'] → Aufrufe heute
-
 echo json_encode(['matches' => $matches], JSON_UNESCAPED_UNICODE);
 
 
@@ -178,7 +174,10 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Array. Kein Text davor oder danach:
 ]
 
 Regeln:
-- "textstelle" muss exakt im Eingabesatz vorkommen (Groß-/Kleinschreibung beachten).
+- "textstelle" muss exakt so im Eingabesatz vorkommen, einschließlich aller
+  Wörter dazwischen, Groß- und Kleinschreibung muß beachtet werden. Wenn die relevante Phrase Füllwörter enthält
+  (wie "nicht mehr"), müssen diese ebenfalls in "textstelle" enthalten sein.
+- Prüfe vor der Antwort: ist "textstelle" mit indexOf() im Originalsatz findbar?
 - Nur Codes aus der folgenden Liste verwenden.
 - Mehrere Codes pro Textstelle → mehrere Einträge mit gleicher Textstelle.
 - Kein Treffer → leeres Array [].
@@ -290,26 +289,4 @@ function jsonError(int $code, string $message): never
     http_response_code($code);
     echo json_encode(['error' => $message]);
     exit;
-}
-
-function incrementCallCounter(string $counterFile): array
-{
-    $data = ['total' => 0, 'today' => 0, 'date' => date('Y-m-d')];
-
-    if (file_exists($counterFile)) {
-        $data = json_decode(file_get_contents($counterFile), true);
-    }
-
-    // Tageszähler zurücksetzen wenn neuer Tag
-    if ($data['date'] !== date('Y-m-d')) {
-        $data['today'] = 0;
-        $data['date']  = date('Y-m-d');
-    }
-
-    $data['total']++;
-    $data['today']++;
-
-    file_put_contents($counterFile, json_encode($data), LOCK_EX);
-
-    return $data;
 }

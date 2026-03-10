@@ -33,5 +33,30 @@
             "beschreibung": "Sehen ist eine Funktion, die der Wahrnehmung von Licht sowie von Form, Größe, Gestalt und Farbe des visuellen Reizes dient"
         }
     ]
+},
+    {
+        "sentence": "Da ich nicht mehr so gut laufen kann und auch kein Auto habe, kann ich meine Freunde nicht mehr besuchen und auch keine Konzerte mehr besuchen.",
+    "matches": [
+        {
+            "textstelle": "laufen",
+            "code": "d450",
+            "beschreibung": "Sich zu Fuß auf einer Oberfläche Schritt für Schritt so fortzubewegen, dass stets wenigstens ein Fuß den Boden berührt"
+        },
+        {
+            "textstelle": "Freunde besuchen",
+            "code": "d750",
+            "beschreibung": "Mit anderen Kontakte aufzunehmen, wie bei gelegentlichen Beziehungen mit Leuten, die in derselben Gemeinschaft oder am selben Wohnsitz leben"
+        },
+        {
+            "textstelle": "Konzerte besuchen",
+            "code": "d920",
+            "beschreibung": "Sich an allen Formen des Spiels, von Freizeit- oder Erholungsaktivitäten zu beteiligen"
+        },
+        {
+            "textstelle": "Auto",
+            "code": "e120",
+            "beschreibung": "Ausrüstungsgegenstände, Produkte und Technologien, die von Menschen für ihre Aktivitäten der Mobilität innerhalb und außerhalb von Gebäuden benutzt werden"
+        }
+    ]
 }
 ]

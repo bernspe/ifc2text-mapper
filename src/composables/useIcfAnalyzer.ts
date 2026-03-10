@@ -7,6 +7,7 @@ import {
 } from '~/types/icf'
 
 import _example_responses from '~/assets/example-response.json'
+
 const example_responses = _example_responses as Array<{
     sentence: string,
     matches: Array<{
@@ -16,7 +17,7 @@ const example_responses = _example_responses as Array<{
     }>
 }>
 // get a random choice from the example responses
-const example_response = example_responses[Math.floor(Math.random() * example_responses.length)]
+
 
 
 // ── Composable ────────────────────────────────────────────────────────────────
@@ -27,6 +28,8 @@ export function useIcfAnalyzer() {
     const isLoading = ref(false)
     const isSuccess = ref(false)
     const error = ref<string | null>(null)
+
+    const example_response = ref(example_responses[Math.floor(Math.random() * example_responses.length)])
 
     // Verlauf persistent im localStorage (VueUse, eine Zeile)
     const history = useStorage<string[]>('icf-history', [])
@@ -41,8 +44,8 @@ export function useIcfAnalyzer() {
     }
 
     const get_example_sentence = () => {
-        console.log('Using example sentence:', example_response.sentence)
-        sentence.value = example_response.sentence
+        example_response.value = example_responses[Math.floor(Math.random() * example_responses.length)]
+        return example_response.value.sentence
     }
 
     const get_example_error = () => {
@@ -60,6 +63,8 @@ export function useIcfAnalyzer() {
 
         isLoading.value = true
         error.value = null
+
+        const t0 = performance.now()
 
         try {
             sentenceUuid.value = crypto.randomUUID()
@@ -81,16 +86,36 @@ export function useIcfAnalyzer() {
                 matches.value = data.matches
             } else {
                 // Fake-Daten für Tests
-                matches.value = example_response['matches']
+                matches.value = example_response.value['matches']
             }
 
 
             // History: Duplikate raus, max 10
             history.value = [trimmed, ...history.value.filter(h => h !== trimmed)].slice(0, 10)
             isSuccess.value = true
+
+            // ── Stats: Erfolg ───────────────────────────────────────────────────────
+    sendStats({
+      sentence_uuid: sentenceUuid.value,
+      sentence:      trimmed,
+      success:       true,
+      error_msg:     '',
+      match_count:   matches.value.length,
+      duration_ms:   Math.round(performance.now() - t0),
+    }).catch(e => console.error('[Stats]', e))
         } catch (err) {
             error.value = err instanceof Error ? err.message : 'Unbekannter Fehler'
             matches.value = []
+
+            // ── Stats: Fehler ───────────────────────────────────────────────────────
+    sendStats({
+      sentence_uuid: sentenceUuid.value,
+      sentence:      trimmed,
+      success:       false,
+      error_msg:     error.value,
+      match_count:   0,
+      duration_ms:   Math.round(performance.now() - t0),
+    }).catch(e => console.error('[Stats]', e))
         } finally {
             isLoading.value = false
         }
@@ -197,7 +222,7 @@ function buildAnnotatedHtml(sentence: string, matches: Match[], uniqueCodes: str
         parts.push(
             `<mark class="icf-mark-${primaryCode}" data-action="tooltip-toggle"` +
             ` data-code="${escHtml(dataCodes)}"` +
-            ` data-textstelle="${phrase}"`+
+            ` data-textstelle="${phrase}"` +
             ` data-beschreibung="${escHtml(dataDescs)}">` +
             escHtml(phrase) +
             `<span class="icf-tooltip">${tooltipRows}</span>` +
@@ -210,6 +235,26 @@ function buildAnnotatedHtml(sentence: string, matches: Match[], uniqueCodes: str
     return parts.join('')
 }
 
+function findPhrase(phrase: string, sentence: string): { start: number, end: number } | null {
+    // 1. Exakter Match
+    const exact = sentence.indexOf(phrase)
+    if (exact !== -1) return {start: exact, end: exact + phrase.length}
+
+    // 2. Fuzzy: erstes + letztes Wort als Anker
+    const words = phrase.split(/\s+/).filter(Boolean)
+    if (words.length < 2) return null
+
+    const first = words[0]!
+    const last = words[words.length - 1]!
+    const startPos = sentence.indexOf(first)
+    if (startPos === -1) return null
+
+    const endPos = sentence.indexOf(last, startPos)
+    if (endPos === -1) return null
+
+    return {start: startPos, end: endPos + last.length}
+}
+
 function resolveSpans(sentence: string, matches: Match[]): Span[] {
     const spans: Span[] = []
     const occupied: Set<number> = new Set()
@@ -220,15 +265,19 @@ function resolveSpans(sentence: string, matches: Match[]): Span[] {
     for (const match of sorted) {
         const phrase = match.textstelle.trim()
         if (!phrase) continue
-        const pos = sentence.indexOf(phrase)
-        if (pos === -1) continue
-        if ([...Array(phrase.length)].some((_, i) => occupied.has(pos + i))) continue
-        for (let i = pos; i < pos + phrase.length; i++) occupied.add(i)
+        const found = findPhrase(phrase, sentence)
+        if (!found) continue
+        if ([...Array(found.end - found.start)].some((_, i) => occupied.has(found.start + i))) continue
+        for (let i = found.start; i < found.end; i++) occupied.add(i)
 
-        const existing = spans.find(s => s.start === pos && s.end === pos + phrase.length)
+        const existing = spans.find(s => s.start === found.start && s.end === found.end)
+        // phrase hier durch den tatsächlich gefundenen Substring ersetzen –
+        // damit wird bei Fuzzy-Match der längere Text im Satz markiert, nicht die KI-Phrase
+        const actualPhrase = sentence.slice(found.start, found.end)
         existing
             ? existing.spanMatches.push(match)
-            : spans.push({start: pos, end: pos + phrase.length, phrase, spanMatches: [match]})
+            : spans.push({start: found.start, end: found.end, phrase: actualPhrase, spanMatches: [match]})
+
     }
 
     return spans.sort((a, b) => a.start - b.start)
@@ -236,4 +285,20 @@ function resolveSpans(sentence: string, matches: Match[]): Span[] {
 
 function escHtml(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// Neue Hilfsfunktion – außerhalb des Composables
+async function sendStats(payload: {
+  sentence_uuid: string
+  sentence:      string
+  success:       boolean
+  error_msg:     string
+  match_count:   number
+  duration_ms:   number
+}): Promise<void> {
+  await fetch('/api/stats.php', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  })
 }

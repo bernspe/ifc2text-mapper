@@ -4,6 +4,9 @@ Dieses Tool erlaubt die Analyse von Freitexten unter Verwendung von Codes der [I
 Die Analyse erfolgt durch ein LLM, die requests nutzen das OpenAI-Format.
 Um die App zum laufen zu bringen, benötigst du also Zugang zu einer gehosteten API. Ausserdem benötigst du noch Zugangsdaten für das Cloudflare Turnstile-Widget.
 
+Die Python-Version dieses Tools ist hier zu finden:
+https://gitlab.hrz.tu-chemnitz.de/scads-ai-llm/scads-ai-llm-api-examples/-/tree/main/text2icf?ref_type=heads
+
 ## Setup
 
 ### 1. .env Dateien bearbeiten
