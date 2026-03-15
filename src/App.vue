@@ -1,9 +1,17 @@
 <template>
   <main class="container">
     <header>
+      <div class="heading-row">
       <h1>
         <img src="/accessibility-logo.svg" style="max-height: 60px" alt="Accessibility Logo"/>
-        ICF Code Mapper</h1>
+        ICF Code Mapper
+      </h1>
+        <Turnstile
+            :key="turnstileKey"
+            :site-key="TURNSTILE_SITE_KEY"
+            v-model="turnstileToken"
+        />
+        </div>
       <h5>Internationale Klassifikation der Funktionsfähigkeit</h5>
       <p class="small">Dies ist ein Demo-Tool zur Analyse von Texten zu Teilhabestörungen. Nicht für diagnostische
         Zwecke geeignet. Achtung: KI kann Fehler machen.</p>
@@ -108,7 +116,7 @@
     <article v-if="matches.length">
       <header>
         <h2>Analyse-Ergebnis</h2>
-        <p class="small">Bitte bewerte das Analyse-Ergebnis (Click auf die unterstrichenen Wörter)! Die Eingaben werden
+        <p class="small">Bitte bewerte das Analyse-Ergebnis (Click auf die unterstrichenen Wörter oder markiere verpasste Textstellen)! Die Eingaben werden
           zu Forschungszwecken anonym gespeichert.</p>
       </header>
       <IcfResult
@@ -163,12 +171,14 @@
     </details>
 
     <footer>
-      <div>
-        <Turnstile
-            :key="turnstileKey"
-            :site-key="TURNSTILE_SITE_KEY"
-            v-model="turnstileToken"
-        />
+
+      <div class="footer-content" style="display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:20px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <img src="/heart-icon.svg" style="height:48px;" alt="Heart Icon"/>
+          <span>Wenn dir die App gefällt, teile sie gerne mit deinen Freunden!</span>
+        </div>
+        <button @click="shareApp"><img src="/share-button-green.svg" style="margin-right: 10px; height:24px;"/> Diese App teilen</button>
+
       </div>
     </footer>
   </main>
@@ -225,6 +235,22 @@ function handleReset() {
   fakeData.value=false
 }
 
+function shareApp() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'ICF Code Mapper',
+      text: 'Entdecke den ICF Code Mapper - ein Tool zur Analyse von Teilhabestörungen! Teile deine Erfahrungen und hilf mit, die Welt inklusiver zu gestalten.',
+      url: 'https://icfmapper.renecol.org',
+    }).then(() => {
+      console.log('App erfolgreich geteilt!');
+    }).catch((error) => {
+      console.error('Fehler beim Teilen der App:', error);
+    });
+  } else {
+    copyLinkToCLipboard()
+  }
+}
+
 
 </script>
 
@@ -248,6 +274,12 @@ p.small {
   padding: 0 1rem;
 }
 
+.heading-row {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 10px;
+}
 
 .alert-danger {
   background-color: #feebee;

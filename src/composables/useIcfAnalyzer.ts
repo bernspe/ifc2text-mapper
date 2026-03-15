@@ -234,53 +234,75 @@ function buildAnnotatedHtml(sentence: string, matches: Match[], uniqueCodes: str
     if (cursor < sentence.length) parts.push(escHtml(sentence.slice(cursor)))
     return parts.join('')
 }
-
-function findPhrase(phrase: string, sentence: string): { start: number, end: number } | null {
-    // 1. Exakter Match
-    const exact = sentence.indexOf(phrase)
-    if (exact !== -1) return {start: exact, end: exact + phrase.length}
-
-    // 2. Fuzzy: erstes + letztes Wort als Anker
-    const words = phrase.split(/\s+/).filter(Boolean)
-    if (words.length < 2) return null
-
-    const first = words[0]!
-    const last = words[words.length - 1]!
-    const startPos = sentence.indexOf(first)
-    if (startPos === -1) return null
-
-    const endPos = sentence.indexOf(last, startPos)
-    if (endPos === -1) return null
-
-    return {start: startPos, end: endPos + last.length}
-}
-
 function resolveSpans(sentence: string, matches: Match[]): Span[] {
-    const spans: Span[] = []
-    const occupied: Set<number> = new Set()
+  const spans: Span[] = []
 
-    // Längste Phrase zuerst → verhindert Teilüberschreibungen
-    const sorted = [...matches].sort((a, b) => b.textstelle.length - a.textstelle.length)
+  // Längste Phrase zuerst → verhindert dass kurze Phrases längere verdrängen
+  const sorted = [...matches].sort((a, b) => b.textstelle.length - a.textstelle.length)
 
-    for (const match of sorted) {
-        const phrase = match.textstelle.trim()
-        if (!phrase) continue
-        const found = findPhrase(phrase, sentence)
-        if (!found) continue
-        if ([...Array(found.end - found.start)].some((_, i) => occupied.has(found.start + i))) continue
-        for (let i = found.start; i < found.end; i++) occupied.add(i)
+  for (const match of sorted) {
+    const phrase = match.textstelle.trim()
+    if (!phrase) continue
 
-        const existing = spans.find(s => s.start === found.start && s.end === found.end)
-        // phrase hier durch den tatsächlich gefundenen Substring ersetzen –
-        // damit wird bei Fuzzy-Match der längere Text im Satz markiert, nicht die KI-Phrase
-        const actualPhrase = sentence.slice(found.start, found.end)
-        existing
-            ? existing.spanMatches.push(match)
-            : spans.push({start: found.start, end: found.end, phrase: actualPhrase, spanMatches: [match]})
+    const found = findPhrase(phrase, sentence)
+    if (!found) continue
 
+    // ── Prüfen ob der gefundene Bereich einen bestehenden Span überlappt ────
+    const overlapping = spans.find(s =>
+      found.start < s.end && found.end > s.start
+    )
+
+    if (overlapping) {
+      // Match dem überlappenden Span hinzufügen statt ihn zu verwerfen –
+      // beide Codes werden dann im selben <mark> angezeigt
+      overlapping.spanMatches.push(match)
+      continue
     }
 
-    return spans.sort((a, b) => a.start - b.start)
+    // ── Neuer Span ────────────────────────────────────────────────────────────
+    spans.push({
+      start:       found.start,
+      end:         found.end,
+      // Tatsächlichen Substring aus dem Satz nehmen, nicht die KI-Phrase –
+      // damit stimmt der markierte Text immer mit dem Original überein
+      phrase:      sentence.slice(found.start, found.end),
+      spanMatches: [match],
+    })
+  }
+
+  return spans.sort((a, b) => a.start - b.start)
+}
+
+function findPhrase(phrase: string, sentence: string): { start: number, end: number } | null {
+  // ── 1. Exakter Match ───────────────────────────────────────────────────────
+  const exact = sentence.indexOf(phrase)
+  if (exact !== -1) return { start: exact, end: exact + phrase.length }
+
+  // ── 2. Case-insensitiver Match ─────────────────────────────────────────────
+  const sentenceLower = sentence.toLowerCase()
+  const phraseLower   = phrase.toLowerCase()
+  const casePos       = sentenceLower.indexOf(phraseLower)
+  if (casePos !== -1) return { start: casePos, end: casePos + phrase.length }
+
+  // ── 3. Fuzzy: erstes + letztes Wort als Anker ──────────────────────────────
+  // Findet "rechte Arm schmerzt" auch wenn im Satz "rechte Arm einschläft und schmerzt" steht
+  const words = phrase.split(/\s+/).filter(Boolean)
+  if (words.length < 2) return null
+
+  const firstWord = words[0]!.toLowerCase()
+  const lastWord  = words[words.length - 1]!.toLowerCase()
+
+  const startPos = sentenceLower.indexOf(firstWord)
+  if (startPos === -1) return null
+
+  // Letztes Wort nach dem ersten suchen, aber nicht zu weit weg
+  // (max. 3× die Länge der Originalphrase – verhindert wilde Ferntreffer)
+  const searchLimit = startPos + phrase.length * 3
+  const lastPos     = sentenceLower.indexOf(lastWord, startPos + firstWord.length)
+
+  if (lastPos === -1 || lastPos > searchLimit) return null
+
+  return { start: startPos, end: lastPos + lastWord.length }
 }
 
 function escHtml(s: string): string {

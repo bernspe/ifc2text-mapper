@@ -177,6 +177,7 @@ Regeln:
 - "textstelle" muss exakt so im Eingabesatz vorkommen, einschließlich aller
   Wörter dazwischen, Groß- und Kleinschreibung muß beachtet werden. Wenn die relevante Phrase Füllwörter enthält
   (wie "nicht mehr"), müssen diese ebenfalls in "textstelle" enthalten sein.
+- Versuche nicht, zusammengesetzte Verben zu trennen (z.B. "sich bewegen" → "bewegen"), wenn im Satz die Füllwörter dazwischen stehen ("sich ... bewegen") oder "aufwache" → "aufwache" statt "wache ... auf". Liefere immer die exakte Textstelle zurück.
 - Prüfe vor der Antwort: ist "textstelle" mit indexOf() im Originalsatz findbar?
 - Nur Codes aus der folgenden Liste verwenden.
 - Mehrere Codes pro Textstelle → mehrere Einträge mit gleicher Textstelle.

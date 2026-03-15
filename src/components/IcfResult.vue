@@ -11,12 +11,18 @@
         <h3>Markierter Satz</h3>
         <!-- eslint-disable-next-line vue/no-v-html -->
         <!-- IcfResult.vue -->
-        <p class="annotated" v-html="annotatedHtml" @click.capture="onFeedbackClick" ref="containerRef"/>
+        <p class="annotated" v-html="annotatedHtml"
+           @click.capture="onFeedbackClick"
+           ref="containerRef"/>
       </hgroup>
 
       <h3>Gefundene ICF-Codes</h3>
-      <ul>
-        <li v-for="[code, descs] in groupedMatches" :key="code">
+      <ul class="codeslist">
+        <li v-for="[code, descs] in groupedMatches" :key="code"
+            :ref="el => { if (el) legendRefs[code] = el as HTMLElement }"
+        :class="{ 'icf-legend-active': activeCode === code }"
+        @click="highlightMark(code)"
+        >
           <span
               class="swatch"
               :style="{
@@ -42,10 +48,32 @@
                 style="max-height: 80px; width:auto; object-fit: contain; min-width:10em;"
             />
           </div>
-
         </li>
       </ul>
 
+      <h3>Verpasste Textstellen</h3>
+      <button @click="missedPhrasesMarking=!missedPhrasesMarking">
+        {{ missedPhrasesMarking ? 'Textstellen markieren...' : 'verpasste Textstellen hinzufügen' }}
+      </button>
+      <ul>
+        <li v-for="(missed, i) in missedPhrases" :key="i" class="missed-phrase">
+          {{ missed.phrase }}
+          <div v-if="!missed.sended">
+          <button
+              style="--pico-form-element-spacing-vertical: 0.2rem;"
+              @click="missed.sended = true; sendFeedback('MISS', missed.phrase, false); missedPhrasesMarking=false">Feedback senden
+
+          </button>
+            <button
+                style="--pico-form-element-spacing-vertical: 0.2rem; background-color: whitesmoke; color: red;"
+                @click="missedPhrases.splice(i,1)">
+              Löschen</button>
+            </div>
+          <div v-else>
+            <span style="color: green; font-weight: bold;">Feedback gesendet</span>
+          </div>
+        </li>
+      </ul>
     </section>
   </Transition>
 </template>
@@ -54,7 +82,7 @@
 import {paletteFor} from '~/types/icf'
 import type {Match} from '~/types/icf'
 import __icfcodes from "../assets/icf_codes3.json";
-import {ref} from "vue";
+import {nextTick, ref, watch} from "vue";
 import {onClickOutside} from "@vueuse/core";
 
 interface ICFItemStructure extends Object {
@@ -67,8 +95,14 @@ interface ICFItemStructure extends Object {
   'p': string
 }
 
-const containerRef = ref<HTMLElement | null>(null)
+interface MissedPhrasesStruct extends Object {
+  phrase: string
+  sended: boolean
+}
 
+const containerRef = ref<HTMLElement | null>(null)
+const legendRefs = ref<Record<string, HTMLElement>>({})
+const activeCode = ref<string | null>(null)
 const _icfcodes: Record<string, ICFItemStructure> = __icfcodes;
 
 const props = defineProps<{
@@ -81,8 +115,34 @@ const props = defineProps<{
   groupedMatches: Map<string, string[]>
 }>()
 
+const missedPhrases = ref<MissedPhrasesStruct[]>([])
+const missedPhrasesMarking = ref(false)
+
+function addMissedPhrase(e: Event) {
+  if (missedPhrasesMarking.value) {
+        const selection = window.getSelection()?.toString() || ''
+        if (selection.trim()) {
+          missedPhrases.value.push({phrase: selection, sended: false})
+        }
+      }
+}
+
+watch(missedPhrasesMarking, (newVal) => {
+  if (newVal) {
+    const target = document.getElementsByClassName('annotated')[0] as HTMLElement
+    target.addEventListener("mouseup", (e:Event) => {
+        addMissedPhrase(e)
+      e.preventDefault()
+    })
+  } else {
+    const target = document.getElementsByClassName('annotated')[0] as HTMLElement
+        target.removeEventListener("mouseup", () => {
+    })
+  }
+})
+
 function onFeedbackClick(e: MouseEvent) {
-  console.log('Clicked element:', e.target)
+  if (missedPhrasesMarking.value) return
   const mark = (e.target as HTMLElement).closest('[data-action="tooltip-toggle"]') as HTMLElement | null
   const btn = (e.target as HTMLElement).closest('[data-feedback]') as HTMLElement | null
   if (btn) {
@@ -98,21 +158,41 @@ function onFeedbackClick(e: MouseEvent) {
       if (m !== mark) m.classList.remove('icf-open')
     })
     mark.classList.toggle('icf-open')
+    const code = mark.dataset.code?.split(',')[0]?.trim() ?? null
+  activeCode.value = activeCode.value === code ? null : code
+     if (code) {
+  nextTick(() => {
+    legendRefs.value[code]?.scrollIntoView({
+      behavior: 'smooth',
+      block:    'nearest',
+    })
+  })
+}
     e.stopPropagation()
   }
 }
 
+function highlightMark(code: string) {
+  activeCode.value = code
+
+  document.querySelectorAll(`mark.icf-mark-${code}`)
+    .forEach(m => m.classList.add('icf-mark-active'))
+  // andere Marks deaktivieren
+  document.querySelectorAll('mark:not(.icf-mark-' + code + ')')
+    .forEach(m => m.classList.remove('icf-mark-active'))
+}
+
 async function sendFeedback(
-  code:         string,
-  textstelle:   string,
-  correct:      boolean
+    code: string,
+    textstelle: string,
+    correct: boolean
 ) {
   await fetch('/api/feedback.php', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       sentence_uuid: props.sentenceUuid,  // UUIDv4, beim ersten Analyze generiert
-      sentence:      props.sentence,
+      sentence: props.sentence,
       code,
       textstelle,
       correct,
@@ -122,9 +202,9 @@ async function sendFeedback(
 
 function setFeedback(code: string, textstelle: string, correct: boolean) {
 
-   // Mark-Element im DOM finden und Badge-Klasse setzen
+  // Mark-Element im DOM finden und Badge-Klasse setzen
   const mark = document.querySelector(
-    `mark[data-code="${code}"][data-textstelle="${textstelle}"]`
+      `mark[data-code="${code}"][data-textstelle="${textstelle}"]`
   ) as HTMLElement | null
 
   if (mark) {
@@ -134,7 +214,7 @@ function setFeedback(code: string, textstelle: string, correct: boolean) {
 
   // Fire-and-forget – Fehler loggen aber UI nicht blockieren
   sendFeedback(code, textstelle, correct).catch(err =>
-    console.error('[Feedback]', err)
+      console.error('[Feedback]', err)
   )
 }
 
@@ -145,7 +225,7 @@ onClickOutside(containerRef, () => {
 const imageServer = () => import.meta.env.VITE_IMAGE_SERVER
 
 const TOOLTIP_CSS = `
-  mark { position: relative; display: inline; padding: 1px 4px; border-radius: 3px; font-weight: 600; cursor: default; transition: filter .15s; }
+  mark { position: relative; display: inline; padding: 1px 4px; border-radius: 3px; font-weight: 600; cursor: pointer; transition: filter .15s; }
   mark:hover { filter: brightness(.9); }
 
   .icf-tooltip {
@@ -170,6 +250,14 @@ const TOOLTIP_CSS = `
     content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
     border: 6px solid transparent; border-top-color: var(--pico-muted-border-color);
   }
+
+.icf-legend-active {
+  border: 2px solid currentColor;
+  border-radius: var(--pico-border-radius);
+  padding-left: .5rem;
+  margin-left: -.5rem;
+  transition: background .2s;
+}
 
 mark.icf-open .icf-tooltip {
   visibility: visible; opacity: 1;
@@ -206,14 +294,20 @@ background: darkred;
   right: -4px;
   line-height: 1;
 }
+
+mark.icf-mark-active {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
 `
 </script>
 
 <style scoped>
-/* Pico stylt <ul>, <li>, <strong>, <section> bereits – nur Deltas nötig */
+
 .annotated {
   font-size: 1.3rem;
   line-height: 2.2;
+  cursor: default;
 }
 
 .swatch {
@@ -225,6 +319,52 @@ background: darkred;
   flex-shrink: 0;
   margin-top: 4px;
 }
+
+
+.codeslist {
+  cursor: pointer;
+  max-height: 350px;
+  overflow-y: scroll;
+  position: relative; /* Voraussetzung für die Pseudo-Elemente */
+}
+
+.codeslist::before,
+.codeslist::after {
+  content: '';
+  position: sticky;
+  display: block;
+  left: 0;
+  right: 0;
+  height: 3rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.codeslist::before {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--pico-card-background-color),
+    transparent
+  );
+}
+
+.codeslist::after {
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    var(--pico-card-background-color),
+    transparent
+  );
+}
+
+.missed-phrase {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .5rem;
+}
+
 
 /* Legende: zweispaltig (Punkt + Text) */
 ul > li {

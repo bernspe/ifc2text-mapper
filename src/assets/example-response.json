@@ -58,5 +58,35 @@
             "beschreibung": "Ausrüstungsgegenstände, Produkte und Technologien, die von Menschen für ihre Aktivitäten der Mobilität innerhalb und außerhalb von Gebäuden benutzt werden"
         }
     ]
+},
+    {
+        "sentence": "Weil mir imer der rechte Arm einschläft und schmerzt wache ich häufig auf. Ich kann nur einen Treppenabsatz gehen, dann muss ich stehenbleiben und luft holen",
+    "matches": [
+        {
+            "textstelle": "rechte Arm einschläft",
+            "code": "b780",
+            "beschreibung": "Empfindungen, die mit den Muskeln oder Muskelgruppen des Körpers und ihren Bewegungen verbunden sind"
+        },
+        {
+            "textstelle": "rechte Arm schmerzt",
+            "code": "b280",
+            "beschreibung": "Empfinden eines unangenehmen Gefühls, das mögliche oder tatsächliche Schäden einer Körperstruktur anzeigt"
+        },
+        {
+            "textstelle": "häufig aufwache",
+            "code": "b134",
+            "beschreibung": "Allgemeine mentale Funktionen, die sich in einer periodischen, reversiblen und selektiven physischen und mentalen Loslösung von der unmittelbaren Umgebung äußern"
+        },
+        {
+            "textstelle": "nur einen Treppenabsatz gehen",
+            "code": "d450",
+            "beschreibung": "Sich zu Fuß auf einer Oberfläche Schritt für Schritt so fortzubewegen, dass stets wenigstens ein Fuß den Boden berührt"
+        },
+        {
+            "textstelle": "muss ich stehenbleiben und Luft holen",
+            "code": "b440",
+            "beschreibung": "Funktionen, die Inspiration, Gasaustausch zwischen Luft und Blut sowie Exspiration betreffen"
+        }
+    ]
 }
 ]
