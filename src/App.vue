@@ -1,81 +1,20 @@
 <template>
   <main class="container">
     <header>
-      <div class="heading-row">
       <h1>
         <img src="/accessibility-logo.svg" style="max-height: 60px" alt="Accessibility Logo"/>
         ICF Code Mapper
       </h1>
-        <Turnstile
-            :key="turnstileKey"
-            :site-key="TURNSTILE_SITE_KEY"
-            v-model="turnstileToken"
-        />
-        </div>
+
       <h5>Internationale Klassifikation der Funktionsfähigkeit</h5>
-      <p class="small">Dies ist ein Demo-Tool zur Analyse von Texten zu Teilhabestörungen. Nicht für diagnostische
-        Zwecke geeignet. Achtung: KI kann Fehler machen.</p>
+      <p>Hast du eine Einschränkung, die dich im Alltag hindert? Beschreib sie in einem Satz – und wir zeigen dir, wie
+        das internationale Gesundheitssystem sie einordnet.</p>
     </header>
 
     <!-- Eingabe -->
-    <article>
+    <article id="article-input">
       <header>
-        <h2>Text-Eingabe</h2>
-        <details>
-          <summary>Worum geht es hier überhaupt?</summary>
-          <h4>Teilhabestörungen</h4>
-          <p>Teilhabestörungen verhindern ein <strong>gleichberechtigtes Leben</strong> in der Gemeinschaft. Sie
-            entstehen durch
-            Behinderung oder Krankheit, aber auch durch bewußte und unbewußte <strong>Marginalisierung von
-              Menschen</strong> aufgrund von
-            ethnischer, religiöser und Gender-Zugehörigkeit aber auch durch Aufspaltungen in der Gesellschaft aufgrund
-            von Bildung und finanziellem Status.</p>
-          <p>Dies geschieht sowohl auf individueller als auch auf institutioneller Ebene. Dieses Projekt soll <strong>Teilhabestörungen
-            messbar</strong> machen.</p>
-
-          <h4>Weitere Informationen</h4>
-          <ul>
-            <li><a
-                href="https://renecol.org/rehabilitation/dringender-aufruf-zum-wandel-die-un-berichte-zeigen-systemische-maengel-bei-der-gleichberechtigung-von-menschen-mit-behinderungen/">Systemische
-              Ungleichbehandlung von Menschen mit Behinderungen</a></li>
-          </ul>
-        </details>
-        <details>
-          <summary>Warum ist das wichtig?</summary>
-          <h4>Teilhabestörung und Gesundheit</h4>
-          <p>Teilhabestörungen erzeugen per se einen <strong>Krankheitswert</strong>: diese Menschen geht es
-            gesundheitlich schlechter und sie sterben statistisch gesehen auch früher.</p>
-          <p>Auf individueller Ebene kann jeder davon betroffen sein. Auf Ebene der Gemeinschaft erzeugt die fatale
-            gesundheitliche Endstrecke von Teilhabestörungen <strong>höhere Kosten</strong> - diese fallen dann im
-            Gesundheitswesen an. Diese Kosten wären vermeidbar.</p>
-          <p>Die ICF Klassifikation hilft uns, Teilhabestörungen einzuordnen und gezielt anzugehen. Jedoch ist bisher
-            noch keine Übersetzung von Alltagssprache in die ICF Klassifikation gelungen.</p>
-
-          <h4>Weitere Informationen</h4>
-          <ul>
-            <li><a
-                href="https://www.who.int/teams/social-determinants-of-health/equity-and-health/world-report-on-social-determinants-of-health-equity">World
-              report on
-              social determinants
-              of health equity</a></li>
-            <li><a href="https://www.euro.who.int/en/publications/abstracts/health-equity-status-report-2019">WHO
-              European Health Equity Status Report</a></li>
-            <li><a
-                href="https://renecol.org/icfx/die-macht-des-einfachen-warum-behandler-und-patienten-intuitiv-im-icf-kontext-uebereinstimmen/">Möglichkeiten
-              der ICF</a></li>
-          </ul>
-        </details>
-        <details>
-          <summary>Was muss ich machen?</summary>
-          <p>Jeder von uns kennt Menschen mit Teilhabestörungen. Kannst du deren Problem (ohne Namensnennung!) in ein
-            oder zwei Sätzen zusammenfassen? Gib dies in das Freitext-Feld ein und lass die KI den Text analysieren.
-            Danach interessiert uns, ob die KI die richtigen ICF-Items erzeugt hat. Dazu klickst du bitte auf die
-            markierten Wörter im Text und gibst mit Daumen hoch/runter ein Zeichen, ob dies zu dem jeweiligen ICF Item
-            passt. </p>
-          <p>Die Daten bleiben vollständig anonym und werden statistisch ausgewertet. Bitte teile den Link dieser Seite
-            auch mit deinen Bekannten, Freunden, Mitarbeitern. Danke!</p>
-          <button @click="copyLinkToCLipboard">{{ linkText }}</button>
-        </details>
+        <h2>Einschränkung eingeben</h2>
       </header>
 
       <label for="sentence">Freitext eingeben</label>
@@ -83,13 +22,14 @@
           id="sentence"
           v-model="sentence"
           rows="3"
-          placeholder="z.B. Ich kann schlecht laufen und schlecht hören."
+          placeholder="z.B.: Wegen meiner Angststörung kann ich nicht mehr mit dem Bus fahren und bin deshalb fast nie unter Menschen. Zum Glück helfen mir meine Freunde."
           :disabled="isLoading || isSuccess"
           :aria-busy="isLoading"
           @keydown.ctrl.enter="handleSubmit"
           @keydown.meta.enter="handleSubmit"
       />
-
+      <p class="small">Deine Eingabe wird anonym zur Verbesserung der ICF-Analyse genutzt. Kein Account, keine
+        E-Mail.</p>
       <button @click="useFakeData" v-if="dev_mode">FakeData</button>
 
       <button
@@ -100,23 +40,30 @@
         {{ isLoading ? 'Analysiere… (kann bis zu 5 Minuten dauern) ' : 'Analysieren' }}
       </button>
 
-      <button
-          :disabled="isLoading || !isSuccess"
-          @click="reset">
+      <button class="secondary" v-if="isSuccess"
+              @click="reset">
         Reset
       </button>
 
 
       <!-- Pico stylt role="alert" automatisch als Error-Banner -->
       <p v-if="error" role="alert" class="alert-danger">{{ error }}</p>
-      <p v-else-if="matches.length=== 0 && isSuccess" role="alert" class="alert">Keine ICF-Codes gefunden. Bitte versuche es mit einer anderen Formulierung oder einem anderen Satz.</p>
+      <p v-else-if="matches.length=== 0 && isSuccess" role="alert" class="alert">Keine ICF-Codes gefunden. Bitte
+        versuche es mit einer anderen Formulierung oder einem anderen Satz.</p>
     </article>
 
     <!-- Ergebnis -->
     <article v-if="matches.length">
       <header>
-        <h2>Analyse-Ergebnis</h2>
-        <p class="small">Bitte bewerte das Analyse-Ergebnis (Click auf die unterstrichenen Wörter oder markiere verpasste Textstellen)! Die Eingaben werden
+        <h2>So sieht das System deinen Satz</h2>
+        <p>
+          <small>
+            ⚠ KI-gestützte Einordnung – kein Ersatz für ärztliche oder
+            therapeutische Diagnose. Fehler sind möglich.
+          </small>
+        </p>
+        <p>Bitte bewerte das Analyse-Ergebnis (Click auf die unterstrichenen Wörter oder markiere
+          verpasste Textstellen)! Die Eingaben werden
           zu Forschungszwecken anonym gespeichert.</p>
       </header>
       <IcfResult
@@ -130,9 +77,73 @@
       />
     </article>
 
+    <div v-if="isSuccess" style="margin-bottom: 20px">
+      <h3>Danke für dein Feedback!</h3>
+      <a href="#article-input" @click="handleReset">Möchtest du noch eine Erfahrung beschreiben?</a>
+    </div>
+
+    <h3>Weitere Informationen</h3>
+    <details>
+      <summary>Worum geht es hier überhaupt?</summary>
+      <h4>Teilhabestörungen</h4>
+      <p>Teilhabestörungen verhindern ein <strong>gleichberechtigtes Leben</strong> in der Gemeinschaft. Sie
+        entstehen durch
+        Behinderung oder Krankheit, aber auch durch bewußte und unbewußte <strong>Marginalisierung von
+          Menschen</strong> aufgrund von
+        ethnischer, religiöser und Gender-Zugehörigkeit aber auch durch Aufspaltungen in der Gesellschaft aufgrund
+        von Bildung und finanziellem Status.</p>
+      <p>Dies geschieht sowohl auf individueller als auch auf institutioneller Ebene. Dieses Projekt soll <strong>Teilhabestörungen
+        messbar</strong> machen.</p>
+
+      <h4>Weitere Informationen</h4>
+      <ul>
+        <li><a
+            href="https://renecol.org/rehabilitation/dringender-aufruf-zum-wandel-die-un-berichte-zeigen-systemische-maengel-bei-der-gleichberechtigung-von-menschen-mit-behinderungen/">Systemische
+          Ungleichbehandlung von Menschen mit Behinderungen</a></li>
+      </ul>
+    </details>
+    <details>
+      <summary>Warum ist das wichtig?</summary>
+      <h4>Teilhabestörung und Gesundheit</h4>
+      <p>Teilhabestörungen erzeugen per se einen <strong>Krankheitswert</strong>: diese Menschen geht es
+        gesundheitlich schlechter und sie sterben statistisch gesehen auch früher.</p>
+      <p>Auf individueller Ebene kann jeder davon betroffen sein. Auf Ebene der Gemeinschaft erzeugt die fatale
+        gesundheitliche Endstrecke von Teilhabestörungen <strong>höhere Kosten</strong> - diese fallen dann im
+        Gesundheitswesen an. Diese Kosten wären vermeidbar.</p>
+      <p>Die ICF Klassifikation hilft uns, Teilhabestörungen einzuordnen und gezielt anzugehen. Jedoch ist bisher
+        noch keine Übersetzung von Alltagssprache in die ICF Klassifikation gelungen.</p>
+
+      <h4>Weitere Informationen</h4>
+      <ul>
+        <li><a
+            href="https://www.who.int/teams/social-determinants-of-health/equity-and-health/world-report-on-social-determinants-of-health-equity">World
+          report on
+          social determinants
+          of health equity</a></li>
+        <li><a href="https://www.euro.who.int/en/publications/abstracts/health-equity-status-report-2019">WHO
+          European Health Equity Status Report</a></li>
+        <li><a
+            href="https://renecol.org/icfx/die-macht-des-einfachen-warum-behandler-und-patienten-intuitiv-im-icf-kontext-uebereinstimmen/">Möglichkeiten
+          der ICF</a></li>
+      </ul>
+    </details>
+    <details>
+      <summary>Was muss ich machen?</summary>
+      <p>Jeder von uns kennt Menschen mit Teilhabestörungen. Kannst du deren Problem (ohne Namensnennung!) in ein
+        oder zwei Sätzen zusammenfassen? Gib dies in das Freitext-Feld ein und lass die KI den Text analysieren.
+        Danach interessiert uns, ob die KI die richtigen ICF-Items erzeugt hat. Dazu klickst du bitte auf die
+        markierten Wörter im Text und gibst mit Daumen hoch/runter ein Zeichen, ob dies zu dem jeweiligen ICF Item
+        passt. </p>
+      <p>Die Daten bleiben vollständig anonym und werden statistisch ausgewertet. Bitte teile den Link dieser Seite
+        auch mit deinen Bekannten, Freunden, Mitarbeitern. Danke!</p>
+      <button @click="shareApp"><img src="/share-button-green.svg" style="margin-right: 10px; height:24px;"/> Diese App
+        teilen
+      </button>
+    </details>
+
     <!-- Verlauf – Pico stylt <details>/<summary> als Accordion automatisch -->
     <details v-if="history.length">
-      <summary>Verlauf ({{ history.length }})</summary>
+      <summary>Deine bisherigen Eingaben (nur lokal gespeichert): {{ history.length }} Einträge</summary>
       <ul>
         <li
             v-for="(entry, i) in history"
@@ -172,23 +183,43 @@
 
     <footer>
 
-      <div class="footer-content" style="display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:20px;">
+      <div class="footer-content"
+           style="display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:20px;">
+
+        <article style="text-align: center;">
+          <p>Du bist nicht allein.</p>
+          <p style="font-size: 1.5rem; font-weight: 700; margin: 0.25rem 0;">
+            {{ usageStats?.overview.unique_sessions.toLocaleString('de-DE') }} Menschen
+          </p>
+          <p>haben ihre Erfahrung bereits geteilt.</p>
+          <p>
+            <small>Danke, dass du mitmachst!</small>
+          </p>
+        </article>
+
         <div style="display:flex; gap:10px; align-items:center;">
           <img src="/heart-icon.svg" style="height:48px;" alt="Heart Icon"/>
           <span>Wenn dir die App gefällt, teile sie gerne mit deinen Freunden!</span>
         </div>
-        <button @click="shareApp"><img src="/share-button-green.svg" style="margin-right: 10px; height:24px;"/> Diese App teilen</button>
-
+        <button @click="shareApp"><img src="/share-button-green.svg" style="margin-right: 10px; height:24px;"/> Diese
+          App teilen
+        </button>
+        <Turnstile
+            :key="turnstileKey"
+            :site-key="TURNSTILE_SITE_KEY"
+            v-model="turnstileToken"
+        />
       </div>
     </footer>
   </main>
 </template>
 
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {onMounted, ref, watch} from 'vue'
 import IcfResult from '~/components/IcfResult.vue'
 import {useIcfAnalyzer} from '~/composables/useIcfAnalyzer'
 import {Turnstile} from '@sctg/turnstile-vue3';
+import type {StatsResponse} from '~/types/stats'
 
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string
@@ -203,7 +234,9 @@ const {
 } = useIcfAnalyzer()
 
 const turnstileToken = ref('')
+const usageStats = ref<StatsResponse | null>(null)
 const fakeData = ref(false)
+
 async function handleSubmit() {
   if (!turnstileToken.value || !sentence.value.trim() || isLoading.value || isSuccess.value) return
   await analyze(turnstileToken.value, fakeData.value)
@@ -211,18 +244,18 @@ async function handleSubmit() {
   turnstileKey.value++;
 }
 
-const linkText=ref('Link in die Zwischenablage kopieren')
+const linkText = ref('Link in die Zwischenablage kopieren')
 
 function copyLinkToCLipboard() {
   navigator.clipboard.writeText('https://icfmapper.renecol.org')
-    .then(() => {
-      linkText.value = 'Link kopiert!'
-      setTimeout(() => linkText.value = 'Link in die Zwischenablage kopieren', 2000)
-    })
-    .catch(err => {
-      console.error('Fehler beim Kopieren des Links: ', err)
-      linkText.value = 'Fehler beim Kopieren'
-    })
+      .then(() => {
+        linkText.value = 'Link kopiert!'
+        setTimeout(() => linkText.value = 'Link in die Zwischenablage kopieren', 2000)
+      })
+      .catch(err => {
+        console.error('Fehler beim Kopieren des Links: ', err)
+        linkText.value = 'Fehler beim Kopieren'
+      })
 }
 
 function useFakeData() {
@@ -232,7 +265,7 @@ function useFakeData() {
 
 function handleReset() {
   reset()
-  fakeData.value=false
+  fakeData.value = false
 }
 
 function shareApp() {
@@ -251,6 +284,16 @@ function shareApp() {
   }
 }
 
+onMounted(() => {
+  const us = fetch('/api/stats_read.php')
+      .then(res => res.json())
+      .then(data => {
+        usageStats.value = data
+      })
+      .catch(err => {
+        console.error('Fehler beim Abrufen der Nutzungsstatistiken:', err)
+      })
+})
 
 </script>
 

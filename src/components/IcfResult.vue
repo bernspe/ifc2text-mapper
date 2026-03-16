@@ -51,9 +51,9 @@
         </li>
       </ul>
 
-      <h3>Verpasste Textstellen</h3>
+      <h3>Etwas Wichtiges wurde übersehen?</h3>
       <button @click="missedPhrasesMarking=!missedPhrasesMarking">
-        {{ missedPhrasesMarking ? 'Textstellen markieren...' : 'verpasste Textstellen hinzufügen' }}
+        {{ missedPhrasesMarking ? 'Markiere die Textstelle...' : 'Hier ergänzen' }}
       </button>
       <ul>
         <li v-for="(missed, i) in missedPhrases" :key="i" class="missed-phrase">
@@ -74,6 +74,7 @@
           </div>
         </li>
       </ul>
+
     </section>
   </Transition>
 </template>
