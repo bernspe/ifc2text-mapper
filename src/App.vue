@@ -67,6 +67,7 @@
           zu Forschungszwecken anonym gespeichert.</p>
       </header>
       <IcfResult
+          :key="sentenceUuid"
           :sentence="sentence"
           :sentence-uuid="sentenceUuid"
           :matches="matches"
@@ -236,10 +237,11 @@ const {
 const turnstileToken = ref('')
 const usageStats = ref<StatsResponse | null>(null)
 const fakeData = ref(false)
+const language = ref('de')
 
 async function handleSubmit() {
   if (!turnstileToken.value || !sentence.value.trim() || isLoading.value || isSuccess.value) return
-  await analyze(turnstileToken.value, fakeData.value)
+  await analyze(turnstileToken.value, language.value, fakeData.value)
   turnstileToken.value = ''
   turnstileKey.value++;
 }

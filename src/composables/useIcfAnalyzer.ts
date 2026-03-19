@@ -57,7 +57,7 @@ export function useIcfAnalyzer() {
     }
     // ── Analyse ────────────────────────────────────────────────────────────────
     // useThrottleFn verhindert Doppelklicks / schnelles Absenden
-    const analyze = useThrottleFn(async (turnstileToken: string, fake: boolean) => {
+    const analyze = useThrottleFn(async (turnstileToken: string, language: string, fake: boolean) => {
         const trimmed = sentence.value.trim()
         if (!trimmed || isLoading.value) return
 
@@ -72,7 +72,7 @@ export function useIcfAnalyzer() {
                 const res = await fetch('/api/analyze.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({sentence: trimmed, turnstileToken}),
+                    body: JSON.stringify({sentence: trimmed, turnstileToken, lang:language}),
                 })
 
                 if (!res.ok) {
@@ -202,7 +202,7 @@ function buildAnnotatedHtml(sentence: string, matches: Match[], uniqueCodes: str
         if (cursor < start) parts.push(escHtml(sentence.slice(cursor, start)))
 
         const primaryCode = spanMatches[0]?.code ?? ''
-        const dataCodes = spanMatches.map(m => m.code).join(', ')
+        const dataCodes = spanMatches.map(m => m.code).join(' ')
         const dataDescs = spanMatches.map(m => m.beschreibung).join(' | ')
 
         const tooltipRows = spanMatches.map((m) => {
@@ -213,8 +213,8 @@ function buildAnnotatedHtml(sentence: string, matches: Match[], uniqueCodes: str
         <span class="icf-tooltip-desc">${escHtml(m.beschreibung)}</span>
         <span>Ist das korrekt?</span>
         <div role="group">
-        <button class="tooltip-feedback-button" data-feedback="up" data-code="${m.code}" data-textstelle="${phrase}">👍</button>
-        <button class="tooltip-feedback-button" data-feedback="down" data-code="${m.code}" data-textstelle="${phrase}">👎</button>
+        <button class="tooltip-feedback-button" data-feedback="up" data-code="${escHtml(m.code)}" data-textstelle="${escHtml(phrase)}">👍</button>
+        <button class="tooltip-feedback-button" data-feedback="down" data-code="${escHtml(m.code)}" data-textstelle="${escHtml(phrase)}">👎</button>
         </div>
       </div>`
         }).join('')

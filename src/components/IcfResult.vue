@@ -20,8 +20,8 @@
       <ul class="codeslist">
         <li v-for="[code, descs] in groupedMatches" :key="code"
             :ref="el => { if (el) legendRefs[code] = el as HTMLElement }"
-        :class="{ 'icf-legend-active': activeCode === code }"
-        @click="highlightMark(code)"
+            :class="{ 'icf-legend-active': activeCode === code }"
+            @click="highlightMark(code)"
         >
           <span
               class="swatch"
@@ -59,16 +59,18 @@
         <li v-for="(missed, i) in missedPhrases" :key="i" class="missed-phrase">
           {{ missed.phrase }}
           <div v-if="!missed.sended">
-          <button
-              style="--pico-form-element-spacing-vertical: 0.2rem;"
-              @click="missed.sended = true; sendFeedback('MISS', missed.phrase, false); missedPhrasesMarking=false">Feedback senden
+            <button
+                style="--pico-form-element-spacing-vertical: 0.2rem;"
+                @click="missed.sended = true; sendFeedback('MISS', missed.phrase, false); missedPhrasesMarking=false">
+              Feedback senden
 
-          </button>
+            </button>
             <button
                 style="--pico-form-element-spacing-vertical: 0.2rem; background-color: whitesmoke; color: red;"
                 @click="missedPhrases.splice(i,1)">
-              Löschen</button>
-            </div>
+              Löschen
+            </button>
+          </div>
           <div v-else>
             <span style="color: green; font-weight: bold;">Feedback gesendet</span>
           </div>
@@ -121,23 +123,23 @@ const missedPhrasesMarking = ref(false)
 
 function addMissedPhrase(e: Event) {
   if (missedPhrasesMarking.value) {
-        const selection = window.getSelection()?.toString() || ''
-        if (selection.trim()) {
-          missedPhrases.value.push({phrase: selection, sended: false})
-        }
-      }
+    const selection = window.getSelection()?.toString() || ''
+    if (selection.trim()) {
+      missedPhrases.value.push({phrase: selection, sended: false})
+    }
+  }
 }
 
 watch(missedPhrasesMarking, (newVal) => {
   if (newVal) {
     const target = document.getElementsByClassName('annotated')[0] as HTMLElement
-    target.addEventListener("mouseup", (e:Event) => {
-        addMissedPhrase(e)
+    target.addEventListener("mouseup", (e: Event) => {
+      addMissedPhrase(e)
       e.preventDefault()
     })
   } else {
     const target = document.getElementsByClassName('annotated')[0] as HTMLElement
-        target.removeEventListener("mouseup", () => {
+    target.removeEventListener("mouseup", () => {
     })
   }
 })
@@ -160,15 +162,15 @@ function onFeedbackClick(e: MouseEvent) {
     })
     mark.classList.toggle('icf-open')
     const code = mark.dataset.code?.split(',')[0]?.trim() ?? null
-  activeCode.value = activeCode.value === code ? null : code
-     if (code) {
-  nextTick(() => {
-    legendRefs.value[code]?.scrollIntoView({
-      behavior: 'smooth',
-      block:    'nearest',
-    })
-  })
-}
+    activeCode.value = activeCode.value === code ? null : code
+    if (code) {
+      nextTick(() => {
+        legendRefs.value[code]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        })
+      })
+    }
     e.stopPropagation()
   }
 }
@@ -177,10 +179,10 @@ function highlightMark(code: string) {
   activeCode.value = code
 
   document.querySelectorAll(`mark.icf-mark-${code}`)
-    .forEach(m => m.classList.add('icf-mark-active'))
+      .forEach(m => m.classList.add('icf-mark-active'))
   // andere Marks deaktivieren
   document.querySelectorAll('mark:not(.icf-mark-' + code + ')')
-    .forEach(m => m.classList.remove('icf-mark-active'))
+      .forEach(m => m.classList.remove('icf-mark-active'))
 }
 
 async function sendFeedback(
@@ -205,12 +207,20 @@ function setFeedback(code: string, textstelle: string, correct: boolean) {
 
   // Mark-Element im DOM finden und Badge-Klasse setzen
   const mark = document.querySelector(
-      `mark[data-code="${code}"][data-textstelle="${textstelle}"]`
+      `mark[data-code~="${code}"][data-textstelle="${textstelle}"]`
   ) as HTMLElement | null
 
+  // find out how many codes are associated with this mark in data-code attribute
+  const mark_codes = mark?.attributes.getNamedItem('data-code')?.value.split(' ')
+  const n_codes = mark_codes ? mark_codes.length : 0
+  const position = (mark_codes ? mark_codes.indexOf(code) : 0) + 1
+
   if (mark) {
-    mark.classList.remove('icf-feedback-up', 'icf-feedback-down')
-    mark.classList.add(correct ? 'icf-feedback-up' : 'icf-feedback-down')
+    const badge = document.createElement('span')
+    badge.className = correct ? 'icf-badge-up' : 'icf-badge-down'
+    badge.textContent = correct ? '👍' : '👎'
+    badge.style.right = `${-4 + position * -8}px`
+    mark.appendChild(badge)
   }
 
   // Fire-and-forget – Fehler loggen aber UI nicht blockieren
@@ -270,31 +280,19 @@ mark.icf-open .icf-tooltip {
   .icf-tooltip-code { font-weight: 700; font-family: monospace; }
   .icf-tooltip-desc { color: var(--pico-muted-color); }
 
-  mark.icf-feedback-up::after {
-  background: #2e7d32;
-  color: white;
-  border-radius: 50%;
-  padding: 2px;
-  content: '👍';
-  font-size: 1 rem;
+.icf-badge-up,
+.icf-badge-down {
   position: absolute;
   top: -8px;
-  right: -4px;
+  font-size: .75rem;
+  border-radius: 50%;
+  padding: 2px;
   line-height: 1;
+  pointer-events: none;
 }
 
-mark.icf-feedback-down::after {
-background: darkred;
-  color: white;
-  border-radius: 50%;
-  padding: 2px;
-  content: '👎';
-  font-size: 1 rem;
-  position: absolute;
-  top: -8px;
-  right: -4px;
-  line-height: 1;
-}
+.icf-badge-up   { background: #2e7d32; color: white; }
+.icf-badge-down { background: #b91c1c; color: white; }
 
 mark.icf-mark-active {
   outline: 2px solid currentColor;
@@ -344,18 +342,18 @@ mark.icf-mark-active {
 .codeslist::before {
   top: 0;
   background: linear-gradient(
-    to bottom,
-    var(--pico-card-background-color),
-    transparent
+      to bottom,
+      var(--pico-card-background-color),
+      transparent
   );
 }
 
 .codeslist::after {
   bottom: 0;
   background: linear-gradient(
-    to top,
-    var(--pico-card-background-color),
-    transparent
+      to top,
+      var(--pico-card-background-color),
+      transparent
   );
 }
 

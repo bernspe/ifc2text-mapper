@@ -51,6 +51,7 @@ if (strlen($rawInput) > 10_000) {
 $body           = json_decode($rawInput, true);
 $sentence       = trim($body['sentence']       ?? '');
 $turnstileToken = trim($body['turnstileToken'] ?? '');
+$language      = in_array($body['lang'] ?? 'de', ['de','en','fr','it','es'], true) ? $body['lang'] : 'de';
 
 if (strlen($sentence) < 3 || strlen($sentence) > 2000) {
     jsonError(400, 'Ungültige Eingabe: Satz muss 3–2000 Zeichen lang sein');
@@ -74,11 +75,14 @@ if (!verifyTurnstile($turnstileToken, $tsSecretKey)) {
 
 // ── ICF-System-Prompt aufbauen (gecacht) ─────────────────────────────────────
 $icfTxtPath   = $_ENV['ICF_TXT_PATH'] ?? '';
-$systemPrompt = buildSystemPrompt($icfTxtPath);
+$promptTextFile = 'prompt.txt';
+$systemPrompt = buildSystemPrompt($icfTxtPath, $promptTextFile);
 
+echo $language;
 // ── LLM aufrufen ─────────────────────────────────────────────────────────────
 $matches = callLlm(
     sentence:     $sentence,
+    language:     $language,
     systemPrompt: $systemPrompt,
     baseUrl:      rtrim($_ENV['LLM_BASE_URL'] ?? '', '/'),
     apiKey:       $_ENV['LLM_API_KEY']        ?? '',
@@ -141,7 +145,7 @@ function checkRateLimit(string $ip, int $limitPerMinute): bool
     return count($data['timestamps']) <= $limitPerMinute;
 }
 
-function buildSystemPrompt(string $txtPath): string
+function buildSystemPrompt(string $txtPath, string $promptTextFile): string
 {
     // APCu: bleibt für die gesamte PHP-FPM-Worker-Lifetime gecacht
     $cacheKey = 'icf_prompt_v1';
@@ -156,33 +160,9 @@ function buildSystemPrompt(string $txtPath): string
 
     $codeList = file_get_contents($txtPath);
 
-    $prompt = <<<PROMPT
-Du bist ein medizinischer Klassifikations-Assistent für das ICF-System (Internationale Klassifikation der Funktionsfähigkeit).
-
-Deine Aufgabe:
-1. Analysiere den Satz des Nutzers.
-2. Identifiziere relevante Textstellen (Wörter oder Phrasen).
-3. Weise jeder Textstelle den am besten passenden ICF-Code zu.
-
-Antworte AUSSCHLIESSLICH mit einem JSON-Array. Kein Text davor oder danach:
-[
-  {
-    "textstelle": "exaktes Wort/Phrase aus dem Eingabesatz",
-    "code": "ICF-Code z.B. b230",
-    "beschreibung": "kurze Begründung (1 Satz)"
-  }
-]
-
-Regeln:
-- "textstelle" muss exakt so im Eingabesatz vorkommen, einschließlich aller
-  Wörter dazwischen, Groß- und Kleinschreibung muß beachtet werden. Wenn die relevante Phrase Füllwörter enthält
-  (wie "nicht mehr"), müssen diese ebenfalls in "textstelle" enthalten sein.
-- Versuche nicht, zusammengesetzte Verben zu trennen (z.B. "sich bewegen" → "bewegen"), wenn im Satz die Füllwörter dazwischen stehen ("sich ... bewegen") oder "aufwache" → "aufwache" statt "wache ... auf". Liefere immer die exakte Textstelle zurück.
-- Prüfe vor der Antwort: ist "textstelle" mit indexOf() im Originalsatz findbar?
-- Nur Codes aus der folgenden Liste verwenden.
-- Mehrere Codes pro Textstelle → mehrere Einträge mit gleicher Textstelle.
-- Kein Treffer → leeres Array [].
-
+   $promptText = file_get_contents($promptTextFile);
+$prompt = <<<PROMPT
+$promptText
 Verfügbare ICF-Codes:
 $codeList
 PROMPT;
@@ -196,6 +176,7 @@ PROMPT;
 
 function callLlm(
     string $sentence,
+    string $language,
     string $systemPrompt,
     string $baseUrl,
     string $apiKey,
@@ -206,7 +187,7 @@ function callLlm(
         'temperature' => 0.1,
         'messages'    => [
             ['role' => 'system', 'content' => $systemPrompt],
-            ['role' => 'user',   'content' => "Analysiere diesen Satz: \"$sentence\""],
+            ['role' => 'user',   'content' => "Sprache der Ausgabe: \"$language\"\nAnalysiere diesen Satz: \"$sentence\""],
         ],
     ], JSON_UNESCAPED_UNICODE);
 
